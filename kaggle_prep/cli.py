@@ -86,10 +86,10 @@ def parse_arguments():
 def display_startup_info(args):
     """Display startup information"""
     if args.verbose:
-        print(f"📦 Dataset: {args.dataset}")
-        print(f"📁 Output directory: {args.output_dir}")
+        print(f" Dataset: {args.dataset}")
+        print(f" Output directory: {args.output_dir}")
         if args.competition:
-            print(f"🏆 Competition mode enabled")
+            print(f" Competition mode enabled")
 
 
 # ============================================================
@@ -101,15 +101,15 @@ def check_credentials(verbose=False):
     kaggle_json = kaggle_dir / "kaggle.json"
     
     if not kaggle_json.exists():
-        print(f"❌ Kaggle credentials not found at: {kaggle_json}")
-        print("\n📝 To get credentials:")
+        print(f"  Kaggle credentials not found at: {kaggle_json}")
+        print("\n To get credentials:")
         print("   1. Go to https://www.kaggle.com/settings/api")
         print("   2. Click 'Create New Token'")
-        print(f"   3. Save kaggle.json to: {kaggle_dir}")
+        print(f"  3. Save kaggle.json to: {kaggle_dir}")
         return None
     
     if verbose:
-        print(f"✅ Found Kaggle credentials at: {kaggle_json}")
+        print(f" Found Kaggle credentials at: {kaggle_json}")
     
     return kaggle_dir
 
@@ -119,7 +119,7 @@ def check_credentials(verbose=False):
 # ============================================================
 def authenticate_kaggle(kaggle_dir, verbose=False):
     """Authenticate with Kaggle API"""
-    print(f"🔄 Authenticating with Kaggle API...")
+    print(f" Authenticating with Kaggle API...")
     
     try:
         os.environ['KAGGLE_CONFIG_DIR'] = str(kaggle_dir)
@@ -127,13 +127,13 @@ def authenticate_kaggle(kaggle_dir, verbose=False):
         api.authenticate()
         
         if verbose:
-            print(f"✅ Authentication successful!")
+            print(f" Authentication successful!")
         
         return api
         
     except Exception as e:
-        print(f"❌ Authentication error: {e}")
-        print("\n🔍 Troubleshooting:")
+        print(f"  Authentication error: {e}")
+        print("\n Troubleshooting:")
         print("   1. Make sure kaggle.json is not empty")
         print("   2. Try re-downloading from Kaggle settings")
         print("   3. Check your internet connection")
@@ -170,7 +170,7 @@ def format_file_size(size_bytes):
 # ============================================================
 def list_downloaded_files(output_path):
     """List all downloaded files with sizes"""
-    print("\n📄 Downloaded files:")
+    print("\n Downloaded files:")
     
     files = list(output_path.rglob("*"))
     if not files:
@@ -192,15 +192,15 @@ def load_first_csv(data_path):
     csv_files = list(Path(data_path).rglob("*.csv"))
     
     if not csv_files:
-        print("❌ No CSV files found to profile!")
+        print(" No CSV files found to profile!")
         return None
     
     try:
         df = pd.read_csv(csv_files[0])
-        print(f"📄 Loaded: {csv_files[0].name} ({len(df):,} rows, {len(df.columns)} columns)")
+        print(f" Loaded: {csv_files[0].name} ({len(df):,} rows, {len(df.columns)} columns)")
         return df
     except Exception as e:
-        print(f"❌ Error loading CSV: {e}")
+        print(f" Error loading CSV: {e}")
         return None
 
 
@@ -209,7 +209,7 @@ def load_first_csv(data_path):
 # ============================================================
 def download_dataset(api, dataset_name, output_path, verbose=False):
     """Download a dataset from Kaggle"""
-    print(f"⬇️  Downloading {dataset_name}...")
+    print(f"Downloading {dataset_name}...")
     
     try:
         api.dataset_download_files(
@@ -218,7 +218,7 @@ def download_dataset(api, dataset_name, output_path, verbose=False):
             unzip=True
         )
         
-        print(f"✅ Download complete! Files saved to: {output_path}")
+        print(f" Download complete! Files saved to: {output_path}")
         
         if verbose:
             list_downloaded_files(output_path)
@@ -235,7 +235,7 @@ def download_dataset(api, dataset_name, output_path, verbose=False):
 # ============================================================
 def download_competition(api, competition_name, output_path, verbose=False):
     """Download competition files from Kaggle"""
-    print(f"⬇️  Downloading competition: {competition_name}...")
+    print(f" Downloading competition: {competition_name}...")
     
     try:
         api.competition_download_files(
@@ -243,7 +243,7 @@ def download_competition(api, competition_name, output_path, verbose=False):
             path=str(output_path)
         )
         
-        print(f"✅ Download complete! Files saved to: {output_path}")
+        print(f" Download complete! Files saved to: {output_path}")
         
         if verbose:
             list_downloaded_files(output_path)
@@ -260,32 +260,32 @@ def download_competition(api, competition_name, output_path, verbose=False):
 # ============================================================
 def handle_download_error(error, dataset_name):
     """Handle and explain download errors"""
-    print(f"❌ Error downloading: {error}")
+    print(f" Error downloading: {error}")
     error_msg = str(error)
     
     if "403" in error_msg:
-        print("\n🔍 Troubleshooting 403 Forbidden error:")
+        print("\n Troubleshooting 403 Forbidden error:")
         print("This usually means the dataset requires accepting terms or is restricted.")
         print(f"1. Visit: https://www.kaggle.com/datasets/{dataset_name}")
         print("2. Click 'Download' and accept any terms")
         print("3. Wait a moment, then try again")
-        print("\n📝 Or try --competition flag if it's a competition:")
+        print("\n Or try --competition flag if it's a competition:")
         print(f"  python kaggle_prep/cli.py {dataset_name} --competition --verbose")
         
     elif "404" in error_msg:
-        print(f"\n🔍 Dataset '{dataset_name}' not found!")
+        print(f"\n Dataset '{dataset_name}' not found!")
         print("Check the spelling or try searching on Kaggle")
-        print("\n📝 Examples:")
+        print("\n Examples:")
         print("  python kaggle_prep/cli.py uciml/iris --verbose")
         print("  python kaggle_prep/cli.py debayank2024/netflix-movies-and-series --verbose")
         
     elif "429" in error_msg:
-        print("\n⚠️  Rate limit reached!")
+        print("\n  Rate limit reached!")
         print("Kaggle limits how many requests you can make.")
         print("Wait 1 hour and try again.")
         
     else:
-        print(f"\n🔍 Unexpected error: {error}")
+        print(f"\n Unexpected error: {error}")
 
 
 # ============================================================
@@ -294,7 +294,7 @@ def handle_download_error(error, dataset_name):
 def profile_downloaded_data(output_path, dataset_name, generate_report=False):
     """Run profiling on downloaded data"""
     
-    print("\n📊 Generating data profile...")
+    print("\n Generating data profile...")
     
     # Load the data
     df = load_first_csv(Path(output_path))
@@ -373,47 +373,53 @@ def main():
     
     # Step 2: Show startup info
     display_startup_info(args)
+    
+    # Step 3: Check if data exists
     output_path = Path(args.output_dir)
-    data_exists = any(output_path.glob("*.csv")) or any(output_path.glob("*.xlsx")) or any(output_path.glob("*.json"))
+    data_exists = any(output_path.glob("*.csv")) or any(output_path.glob("*.xlsx"))
     
-    if args.local and data_exists:
-        print("📁 Using existing data (--local flag detected)")
-        print(f"   Data found in: {output_path}")
-    else:
-        # Only download if:
-        # 1. --local is NOT used, OR
-        # 2. Data doesn't exist
-        if not data_exists:
-            print("📂 No existing data found. Downloading...")
+    # Step 4: Handle download logic
+    if args.local:
+        if data_exists:
+            print("Using existing data (--local flag detected)")
+            print(f"   Data found in: {output_path}")
         else:
-            print("📥 Downloading data (use --local to skip download next time)")
-
-    
-    # Step 3: Check credentials
-    kaggle_dir = check_credentials(args.verbose)
-    if not kaggle_dir:
-        return
-    
-    # Step 4: Authenticate
-    api = authenticate_kaggle(kaggle_dir, args.verbose)
-    if not api:
-        return
-    
-    # Step 5: Create output directory
-    output_path = create_output_directory(args.output_dir)
-    
-    # Step 6: Download
-    if args.competition:
-        download_competition(api, args.dataset, output_path, args.verbose)
+            print(f"No data found in {output_path}")
+            print("Please download data first (remove --local flag)")
+            return
     else:
-        download_dataset(api, args.dataset, output_path, args.verbose)
-
-    df=None
-    profile=None
+        # Download normally
+        if not data_exists:
+            print("No existing data found. Downloading...")
+        else:
+            print("Downloading data (use --local to skip download next time)")
+        
+        # Check credentials
+        kaggle_dir = check_credentials(args.verbose)
+        if not kaggle_dir:
+            return
+        
+        # Authenticate
+        api = authenticate_kaggle(kaggle_dir, args.verbose)
+        if not api:
+            return
+        
+        # Create output directory
+        create_output_directory(args.output_dir)
+        
+        # Download
+        if args.competition:
+            download_competition(api, args.dataset, output_path, args.verbose)
+        else:
+            download_dataset(api, args.dataset, output_path, args.verbose)
+    
+    # Step 5: Load data for profiling and visualization
+    df = None
+    profile = None
+    
     if args.profile or args.report or args.visualize or args.preprocess or args.notebook:
         df = load_first_csv(Path(args.output_dir))
         
-        # If data loaded successfully
         if df is not None:
             # Generate profile if requested
             if args.profile or args.report:
@@ -425,24 +431,21 @@ def main():
                 
                 if args.report:
                     generate_standalone_report(profile)
-    
-    # Step 7: Profile if requested
-    if args.visualize:
-        generate_visualizations(output_path, args.dataset, df)
+            
+            # Generate visualizations if requested
+            if args.visualize:
+                generate_visualizations(output_path, args.dataset, df)
             
             # Generate preprocessing code if requested
-    if args.preprocess:
-        save_preprocessing_code(output_path, args.dataset, df)
+            if args.preprocess:
+                save_preprocessing_code(output_path, args.dataset, df)
             
             # Generate notebook if requested
-    if args.notebook:
-        generate_starter_notebook(args.dataset, df, profile)
-
-    # Step 8: Done!
-    print("\n All done! Happy data science! ")
-
-
-
+            if args.notebook:
+                generate_starter_notebook(args.dataset, df, profile)
+    
+    # Step 6: Done!
+    print("\nAll done! Happy data science!")
 
 # ============================================================
 # ENTRY POINT

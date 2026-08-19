@@ -20,6 +20,7 @@ Requires-Dist: kaggle>=1.5.0
 Requires-Dist: matplotlib>=3.4.0
 Requires-Dist: seaborn>=0.11.0
 Requires-Dist: numpy>=1.21.0
+Requires-Dist: scipy>=1.7.0
 Dynamic: license-file
 
 #  Kaggle Prep

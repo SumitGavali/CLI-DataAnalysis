@@ -87,7 +87,7 @@ def generate_notebook(
     with open(notebook_path, 'w', encoding='utf-8') as f:
         f.write(notebook_content)
     
-    print(f"📓 Starter notebook generated: {notebook_path}")
+    print(f" Starter notebook generated: {notebook_path}")
     return notebook_path
 
 
@@ -120,9 +120,9 @@ def generate_notebook_content(
                 "cell_type": "markdown",
                 "metadata": {},
                 "source": [
-                    f"# 📊 {dataset_name} - Data Analysis\n",
+                    f"#  {dataset_name} - Data Analysis\n",
                     "\n",
-                    "## 📋 Dataset Overview\n",
+                    "##  Dataset Overview\n",
                     "\n",
                     f"- **Dataset:** {dataset_name}\n",
                     f"- **Rows:** {num_rows:,}\n",
@@ -144,7 +144,7 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 📦 Import Required Libraries\n",
+                    "#  Import Required Libraries\n",
                     "import pandas as pd\n",
                     "import numpy as np\n",
                     "import matplotlib.pyplot as plt\n",
@@ -162,10 +162,10 @@ def generate_notebook_content(
                     "pd.set_option('display.max_columns', None)\n",
                     "pd.set_option('display.width', None)\n",
                     "\n",
-                    "print('✅ Libraries imported successfully!')\n",
-                    "print(f'🐼 Pandas version: {pd.__version__}')\n",
-                    "print(f'🔢 NumPy version: {np.__version__}')\n",
-                    "print(f'📊 Seaborn version: {sns.__version__}')"
+                    "print(' Libraries imported successfully!')\n",
+                    "print(f' Pandas version: {pd.__version__}')\n",
+                    "print(f' NumPy version: {np.__version__}')\n",
+                    "print(f' Seaborn version: {sns.__version__}')"
                 ]
             },
             
@@ -177,13 +177,13 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 📂 Load Data\n",
+                    "#  Load Data\n",
                     "# Update this path to your actual data file\n",
                     "df = pd.read_csv('data/your_dataset.csv')\n",
                     "\n",
-                    "print(f\"📊 Dataset loaded successfully!\")\n",
-                    "print(f\"📏 Shape: {df.shape}\")\n",
-                    "print(f\"💾 Memory: {df.memory_usage().sum() / 1024**2:.2f} MB\")\n",
+                    "print(f\" Dataset loaded successfully!\")\n",
+                    "print(f\" Shape: {df.shape}\")\n",
+                    "print(f\" Memory: {df.memory_usage().sum() / 1024**2:.2f} MB\")\n",
                     "\n",
                     "# Preview first few rows\n",
                     "df.head()"
@@ -198,12 +198,12 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# ℹ️ Data Information\n",
-                    "print(\"🔍 Data Types and Memory Usage:\")\n",
+                    "# Data Information\n",
+                    "print(\" Data Types and Memory Usage:\")\n",
                     "df.info()\n",
                     "\n",
                     "print(\"\\n\" + \"=\"*70)\n",
-                    "print(\"📊 Summary Statistics:\")\n",
+                    "print(\" Summary Statistics:\")\n",
                     "print(\"=\"*70)\n",
                     "df.describe(include='all').transpose()"
                 ]
@@ -217,14 +217,14 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# ❓ Missing Values Analysis\n",
+                    "#  Missing Values Analysis\n",
                     "missing_df = pd.DataFrame({\n",
                     "    'Column': df.columns,\n",
                     "    'Missing': df.isna().sum().values,\n",
                     "    'Missing %': (df.isna().sum() / len(df) * 100).round(2).values\n",
                     "}).sort_values('Missing', ascending=False)\n",
                     "\n",
-                    "print(\"📊 Missing Values Summary:\")\n",
+                    "print(\" Missing Values Summary:\")\n",
                     "print(\"=\"*70)\n",
                     "print(missing_df[missing_df['Missing'] > 0])\n",
                     "\n",
@@ -236,7 +236,7 @@ def generate_notebook_content(
                     "    plt.tight_layout()\n",
                     "    plt.show()\n",
                     "else:\n",
-                    "    print(\"✅ No missing values found in the dataset!\")"
+                    "    print(\" No missing values found in the dataset!\")"
                 ]
             },
             
@@ -248,16 +248,16 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 🔁 Duplicate Analysis\n",
+                    "#  Duplicate Analysis\n",
                     "duplicates = df.duplicated().sum()\n",
-                    "print(f\"🔁 Duplicate rows: {duplicates:,}\")\n",
+                    "print(f\" Duplicate rows: {duplicates:,}\")\n",
                     "\n",
                     "if duplicates > 0:\n",
-                    "    print(f\"\\n📊 Duplicate rows represent {duplicates/len(df)*100:.2f}% of the data\")\n",
+                    "    print(f\"\\n Duplicate rows represent {duplicates/len(df)*100:.2f}% of the data\")\n",
                     "    print(\"\\nExample of duplicate rows:\")\n",
                     "    display(df[df.duplicated(keep='first')].head())\n",
                     "else:\n",
-                    "    print(\"✅ No duplicate rows found!\")"
+                    "    print(\" No duplicate rows found!\")"
                 ]
             },
             
@@ -269,11 +269,11 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 📈 Distribution Analysis\n",
+                    "#  Distribution Analysis\n",
                     "\n",
                     "# Numeric columns\n",
                     "numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()\n",
-                    "print(f\"📊 Numeric columns: {len(numeric_cols)}\")\n",
+                    "print(f\" Numeric columns: {len(numeric_cols)}\")\n",
                     "print(numeric_cols)\n",
                     "\n",
                     "if numeric_cols:\n",
@@ -296,7 +296,7 @@ def generate_notebook_content(
                     "\n",
                     "# Categorical columns\n",
                     "cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()\n",
-                    "print(f\"\\n📊 Categorical columns: {len(cat_cols)}\")\n",
+                    "print(f\"\\n Categorical columns: {len(cat_cols)}\")\n",
                     "print(cat_cols)\n",
                     "\n",
                     "if cat_cols:\n",
@@ -320,7 +320,7 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 🔗 Correlation Analysis\n",
+                    "#  Correlation Analysis\n",
                     "if len(numeric_cols) > 1:\n",
                     "    correlation_matrix = df[numeric_cols].corr()\n",
                     "    \n",
@@ -343,13 +343,13 @@ def generate_notebook_content(
                     "                ))\n",
                     "    \n",
                     "    if high_corr:\n",
-                    "        print(\"\\n⚠️ Highly correlated features (|corr| > 0.7):\")\n",
+                    "        print(\"\\n Highly correlated features (|corr| > 0.7):\")\n",
                     "        for col1, col2, corr in high_corr:\n",
                     "            print(f\"  • {col1} ↔ {col2}: {corr:.3f}\")\n",
                     "    else:\n",
-                    "        print(\"\\n✅ No highly correlated features found\")\n",
+                    "        print(\"\\n No highly correlated features found\")\n",
                     "else:\n",
-                    "    print(\"⚠️ Need at least 2 numeric columns for correlation analysis\")"
+                    "    print(\" Need at least 2 numeric columns for correlation analysis\")"
                 ]
             },
             
@@ -361,7 +361,7 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 🔍 Outlier Detection\n",
+                    "#  Outlier Detection\n",
                     "def detect_outliers_iqr(data, column):\n",
                     "    Q1 = data[column].quantile(0.25)\n",
                     "    Q3 = data[column].quantile(0.75)\n",
@@ -386,12 +386,12 @@ def generate_notebook_content(
                     "        })\n",
                     "\n",
                     "if outlier_summary:\n",
-                    "    print(\"📊 Outlier Summary:\")\n",
+                    "    print(\" Outlier Summary:\")\n",
                     "    print(\"=\"*70)\n",
                     "    outlier_df = pd.DataFrame(outlier_summary)\n",
                     "    print(outlier_df)\n",
                     "else:\n",
-                    "    print(\"✅ No outliers detected using IQR method!\")"
+                    "    print(\" No outliers detected using IQR method!\")"
                 ]
             },
             
@@ -403,7 +403,7 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 🧹 Preprocessing Pipeline\n",
+                    "#  Preprocessing Pipeline\n",
                     "def preprocess_data(df, target_col=None):\n",
                     "    \"\"\"\n",
                     "    Preprocess the data for machine learning\n",
@@ -422,8 +422,8 @@ def generate_notebook_content(
                     "    numeric_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()\n",
                     "    categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()\n",
                     "    \n",
-                    "    print(f\"🔢 Numeric columns: {len(numeric_cols)}\")\n",
-                    "    print(f\"📝 Categorical columns: {len(categorical_cols)}\")\n",
+                    "    print(f\" Numeric columns: {len(numeric_cols)}\")\n",
+                    "    print(f\" Categorical columns: {len(categorical_cols)}\")\n",
                     "    \n",
                     "    # Handle missing values\n",
                     "    for col in numeric_cols:\n",
@@ -442,8 +442,8 @@ def generate_notebook_content(
                     "        scaler = StandardScaler()\n",
                     "        X[numeric_cols] = scaler.fit_transform(X[numeric_cols])\n",
                     "    \n",
-                    "    print(f\"✅ Preprocessing complete!\")\n",
-                    "    print(f\"📏 Shape: {X.shape}\")\n",
+                    "    print(f\" Preprocessing complete!\")\n",
+                    "    print(f\" Shape: {X.shape}\")\n",
                     "    \n",
                     "    return X, y\n",
                     "\n",
@@ -461,7 +461,7 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 🤖 Model Training\n",
+                    "#  Model Training\n",
                     "from sklearn.ensemble import RandomForestClassifier\n",
                     "from sklearn.linear_model import LogisticRegression\n",
                     "from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score\n",
@@ -479,7 +479,7 @@ def generate_notebook_content(
                     "    \n",
                     "    for name, model in models.items():\n",
                     "        print(f\"\\n{'='*70}\")\n",
-                    "        print(f\"🎯 Training: {name}\")\n",
+                    "        print(f\" Training: {name}\")\n",
                     "        print('='*70)\n",
                     "        \n",
                     "        # Train\n",
@@ -492,8 +492,8 @@ def generate_notebook_content(
                     "        accuracy = accuracy_score(y_test, y_pred)\n",
                     "        results[name] = accuracy\n",
                     "        \n",
-                    "        print(f\"✅ Accuracy: {accuracy:.4f}\")\n",
-                    "        print(f\"\\n📊 Classification Report:\")\n",
+                    "        print(f\" Accuracy: {accuracy:.4f}\")\n",
+                    "        print(f\"\\n Classification Report:\")\n",
                     "        print(classification_report(y_test, y_pred))\n",
                     "        \n",
                     "        # Confusion Matrix\n",
@@ -508,7 +508,7 @@ def generate_notebook_content(
                     "    \n",
                     "    # Print best model\n",
                     "    print(f\"\\n{'='*70}\")\n",
-                    "    print(\"🏆 Best Model:\")\n",
+                    "    print(\" Best Model:\")\n",
                     "    print('='*70)\n",
                     "    best_model = max(results, key=results.get)\n",
                     "    print(f\"{best_model}: {results[best_model]:.4f} accuracy\")\n",
@@ -529,7 +529,7 @@ def generate_notebook_content(
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 📊 Feature Importance\n",
+                    "#  Feature Importance\n",
                     "def plot_feature_importance(model, feature_names):\n",
                     "    \"\"\"\n",
                     "    Plot feature importance for tree-based models\n",
@@ -554,7 +554,7 @@ def generate_notebook_content(
                     "        \n",
                     "        return feature_importance_df\n",
                     "    else:\n",
-                    "        print(\"⚠️ This model doesn't provide feature importance\")\n",
+                    "        print(\" This model doesn't provide feature importance\")\n",
                     "        return None\n",
                     "\n",
                     "# Example usage (uncomment after training)\n",
