@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy")
+
 import argparse
 from pathlib import Path
 import os
