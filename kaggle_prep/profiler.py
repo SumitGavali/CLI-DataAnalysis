@@ -194,12 +194,14 @@ class DataProfiler:
         # Scale suggestions
         numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
         if len(numeric_cols) > 1:
-            # Check if scaling is needed
-            ranges = [df[col].max() - df[col].min() for col in numeric_cols if len(df[col]) > 0]
-            if ranges and max(ranges) / min(ranges) > 100:
-                suggestions.append(
-                    f" Columns have vastly different scales - consider standardization"
-                )
+            # Check if scaling is needed (ignore constant columns with range == 0)
+            ranges = [float(df[col].max() - df[col].min()) for col in numeric_cols if len(df[col]) > 0]
+            positive_ranges = [r for r in ranges if r > 0]
+            if positive_ranges and len(positive_ranges) > 1:
+                if max(positive_ranges) / min(positive_ranges) > 100:
+                    suggestions.append(
+                        " Columns have vastly different scales - consider standardization"
+                    )
         
         return suggestions
 
@@ -219,15 +221,15 @@ def save_profile_json(profile: Dict, output_dir: str = "data_profiles"):
 
 
 def print_profile_summary(profile: Dict):
-    """Print beautiful profile summary"""
+    """Print clean profile summary across all terminal encodings"""
     
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(" DATA PROFILE SUMMARY")
-    print("="*70)
+    print("=" * 70)
     
     stats = profile['basic_stats']
     print(f"\n Dataset: {profile['dataset']}")
-    print(f" Shape: {stats['rows']:,} rows × {stats['columns']} columns")
+    print(f" Shape: {stats['rows']:,} rows x {stats['columns']} columns")
     print(f" Memory: {stats['memory_mb']:.2f} MB")
     print(f" Duplicates: {stats['duplicates']:,}")
     print(f" Missing: {stats['missing_cells']:,} ({stats['missing_percent']:.2f}%)")
@@ -235,34 +237,37 @@ def print_profile_summary(profile: Dict):
     
     # Column details
     print("\n Column Analysis:")
-    print("-"*70)
+    print("-" * 70)
     
     for col, col_stats in profile['columns'].items():
-        print(f"\n  ▶ {col} ({col_stats['dtype']})")
+        print(f"\n  > {col} ({col_stats['dtype']})")
         print(f"    Missing: {col_stats['missing_percent']:.1f}%")
         print(f"    Unique: {col_stats['unique']:,} ({col_stats['unique_percent']:.1f}%)")
         
         if 'mean' in col_stats:
-            print(f"    Mean: {col_stats['mean']:.2f} (±{col_stats['std']:.2f})")
+            print(f"    Mean: {col_stats['mean']:.2f} (+/- {col_stats['std']:.2f})")
             print(f"    Range: [{col_stats['min']:.2f}, {col_stats['max']:.2f}]")
             if col_stats.get('outliers', 0) > 0:
                 print(f"    Outliers: {col_stats['outliers']} ({col_stats['outlier_percent']:.1f}%)")
         elif 'top_values' in col_stats:
-            print(f"    Top values:")
+            print("    Top values:")
             for val, count in list(col_stats['top_values'].items())[:3]:
-                print(f"      • {val}: {count:,} ({count/stats['rows']*100:.1f}%)")
+                print(f"      * {val}: {count:,} ({count/stats['rows']*100:.1f}%)")
     
     # Warnings
     if profile['warnings']:
         print("\n  WARNINGS:")
         for warning in profile['warnings']:
-            print(f"  • {warning}")
+            # Strip any unprintable leading character if present
+            clean_w = warning.strip()
+            print(f"  * {clean_w}")
     
     # Suggestions
     if profile['suggestions']:
-        print("\n SUGGESTIONS:")
+        print("\n  SUGGESTIONS:")
         for suggestion in profile['suggestions']:
-            print(f"  • {suggestion}")
+            clean_s = suggestion.strip()
+            print(f"  * {clean_s}")
     
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f" Full profile saved to: data_profiles/{profile['dataset'].replace('/', '_')}_profile.json")

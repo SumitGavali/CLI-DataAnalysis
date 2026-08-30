@@ -3,18 +3,34 @@ warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy")
 
 import argparse
-from pathlib import Path
+import json
 import os
-import profile
+import shutil
+import sys
+
+# Ensure UTF-8 output encoding where supported, fallback gracefully
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+from pathlib import Path
+from typing import Optional, Tuple, List, Dict
 import time
+
 import pandas as pd
 from kaggle.api.kaggle_api_extended import KaggleApi
-from .notebook import generate_notebook 
-from .visualizer import generate_eda_plots, generate_preprocessing_code
 
-# Import our custom profiler and report generator
-from .profiler import DataProfiler, save_profile_json, print_profile_summary
+from .notebook import generate_notebook
+from .profiler import DataProfiler, print_profile_summary, save_profile_json
 from .report import generate_standalone_report
+from .visualizer import generate_eda_plots, generate_preprocessing_code
 
 
 # ============================================================
@@ -23,77 +39,201 @@ from .report import generate_standalone_report
 def parse_arguments():
     """Parse and return command line arguments"""
     parser = argparse.ArgumentParser(
-        description="Prepare Kaggle datasets for data analysis."
+        prog="kaggle-prep",
+        description="One-command Kaggle dataset preparation, profiling, visualization & starter notebook generation.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    
+
     parser.add_argument(
         "dataset",
-        help="Kaggle dataset identifier, e.g. adyen/dabstep-benchmark"
+        nargs="?",
+        default=None,
+        help="Kaggle dataset identifier, e.g. 'uciml/iris' or competition name"
     )
-    
+
     parser.add_argument(
-        "--output-dir",
-        default="data",
-        help="Directory to save downloaded data (default: data)"
-    )
-    parser.add_argument(
-        "--notebook",
+        "--setup",
         action="store_true",
-        help="Generate a Jupyter notebook with EDA and preprocessing code"
+        help="Interactive wizard to set up or verify Kaggle API credentials"
     )
+
+    parser.add_argument(
+        "--version", "-v",
+        action="version",
+        version="%(prog)s 0.3.0",
+        help="Show program version number and exit"
+    )
+
+    parser.add_argument(
+        "--all", "-a",
+        action="store_true",
+        help="Run complete pipeline: profile, report, visualize, preprocess, and notebook"
+    )
+
+    parser.add_argument(
+        "--output-dir", "-o",
+        default="data",
+        help="Directory to save downloaded data"
+    )
+
+    parser.add_argument(
+        "--local", "-l",
+        action="store_true",
+        help="Use existing local data in output directory instead of downloading"
+    )
+
+    parser.add_argument(
+        "--competition", "-c",
+        action="store_true",
+        help="Download from Kaggle competition instead of dataset"
+    )
+
+    parser.add_argument(
+        "--profile", "-p",
+        action="store_true",
+        help="Generate data profile JSON and console summary"
+    )
+
+    parser.add_argument(
+        "--report", "-r",
+        action="store_true",
+        help="Generate a standalone HTML report"
+    )
+
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        help="Generate EDA visualization plots"
+    )
+
+    parser.add_argument(
+        "--preprocess",
+        action="store_true",
+        help="Generate auto-preprocessing Python script"
+    )
+
+    parser.add_argument(
+        "--notebook", "-n",
+        action="store_true",
+        help="Generate a starter Jupyter notebook"
+    )
+
+    parser.add_argument(
+        "--target", "-t",
+        default=None,
+        help="Target column name for supervised EDA & modeling"
+    )
+
+    parser.add_argument(
+        "--max-cols", "-m",
+        type=int,
+        default=10,
+        help="Max numeric/categorical columns to plot"
+    )
+
+    parser.add_argument(
+        "--dpi", "-d",
+        type=int,
+        default=150,
+        help="Figure DPI resolution for plots"
+    )
+
+    parser.add_argument(
+        "--fig-format", "-f",
+        choices=["png", "pdf", "svg", "jpg"],
+        default="png",
+        help="Output format for visualization plots"
+    )
+
+    parser.add_argument(
+        "--sample", "-s",
+        type=int,
+        default=None,
+        help="Sample N rows from data for faster processing"
+    )
+
     parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose output for debugging"
     )
-    parser.add_argument(
-        "--local",
-        action="store_true",
-        help="Use existing data - works with --profile, --report, etc"
-    )
 
-    
-    parser.add_argument(
-        "--competition",
-        action="store_true",
-        help="Download from competition instead of dataset"
-    )
-
-    parser.add_argument(
-        "--profile",
-        action="store_true",
-        help="Generate data profile after download"
-    )
-
-    parser.add_argument(
-        "--report",
-        action="store_true",
-        help="Generate a standalone HTML report after download"
-    )
-    parser.add_argument(
-        "--visualize",
-        action="store_true",
-        help="generate EDA visualization (plots)"
-    )
-    parser.add_argument(
-        "--preprocess",
-        action="store_true",
-        help="generate preprocessing code"
-    )
-    
     return parser.parse_args()
 
 
 # ============================================================
-# FUNCTION 2: Display Initial Info
+# FUNCTION 2: Interactive Credentials Setup Wizard
 # ============================================================
-def display_startup_info(args):
-    """Display startup information"""
-    if args.verbose:
-        print(f" Dataset: {args.dataset}")
-        print(f" Output directory: {args.output_dir}")
-        if args.competition:
-            print(f" Competition mode enabled")
+def run_interactive_setup():
+    """Interactive wizard to configure ~/.kaggle/kaggle.json"""
+    print("\n" + "=" * 65)
+    print("  Kaggle API Credentials Setup Wizard")
+    print("=" * 65)
+
+    kaggle_dir = Path.home() / ".kaggle"
+    kaggle_json = kaggle_dir / "kaggle.json"
+
+    if kaggle_json.exists():
+        print(f"\n Found existing credentials at: {kaggle_json}")
+        try:
+            with open(kaggle_json, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            username = data.get("username", "unknown")
+            print(f" Configured username: {username}")
+
+            print(" Testing authentication with Kaggle API...")
+            api = KaggleApi()
+            api.authenticate()
+            print(" Authentication successful! Your Kaggle CLI is ready to use.\n")
+            return True
+        except Exception as e:
+            print(f" Existing credentials failed authentication: {e}")
+            choice = input("\n Would you like to reconfigure your credentials? [y/N]: ").strip().lower()
+            if choice != "y":
+                return False
+
+    print("\n To get your Kaggle API key:")
+    print("   1. Log into https://www.kaggle.com")
+    print("   2. Go to 'Account Settings' -> https://www.kaggle.com/settings/api")
+    print("   3. Scroll to 'API' section and click 'Create New Token'")
+    print("   4. A file named 'kaggle.json' will download with your username and key.\n")
+
+    username = input(" Enter your Kaggle Username: ").strip()
+    if not username:
+        print(" Setup cancelled: Username cannot be empty.")
+        return False
+
+    key = input(" Enter your Kaggle API Key: ").strip()
+    if not key:
+        print(" Setup cancelled: API key cannot be empty.")
+        return False
+
+    try:
+        kaggle_dir.mkdir(parents=True, exist_ok=True)
+        cred_data = {"username": username, "key": key}
+        with open(kaggle_json, "w", encoding="utf-8") as f:
+            json.dump(cred_data, f, indent=2)
+
+        # Set secure permissions on POSIX systems
+        if os.name != "nt":
+            try:
+                os.chmod(kaggle_json, 0o600)
+            except Exception:
+                pass
+
+        print(f"\n Credentials successfully saved to: {kaggle_json}")
+
+        print(" Validating with Kaggle API...")
+        os.environ["KAGGLE_CONFIG_DIR"] = str(kaggle_dir)
+        api = KaggleApi()
+        api.authenticate()
+        print(" Authentication verified! You are ready to download datasets.\n")
+        return True
+
+    except Exception as e:
+        print(f"\n Setup failed during validation: {e}")
+        print(" Please double-check your username and API key on Kaggle.")
+        return False
 
 
 # ============================================================
@@ -103,18 +243,15 @@ def check_credentials(verbose=False):
     """Check if Kaggle credentials exist"""
     kaggle_dir = Path.home() / ".kaggle"
     kaggle_json = kaggle_dir / "kaggle.json"
-    
+
     if not kaggle_json.exists():
-        print(f"  Kaggle credentials not found at: {kaggle_json}")
-        print("\n To get credentials:")
-        print("   1. Go to https://www.kaggle.com/settings/api")
-        print("   2. Click 'Create New Token'")
-        print(f"  3. Save kaggle.json to: {kaggle_dir}")
+        if verbose:
+            print(f" Kaggle credentials not found at: {kaggle_json}")
         return None
-    
+
     if verbose:
         print(f" Found Kaggle credentials at: {kaggle_json}")
-    
+
     return kaggle_dir
 
 
@@ -123,24 +260,26 @@ def check_credentials(verbose=False):
 # ============================================================
 def authenticate_kaggle(kaggle_dir, verbose=False):
     """Authenticate with Kaggle API"""
-    print(f" Authenticating with Kaggle API...")
-    
+    if verbose:
+        print(" Authenticating with Kaggle API...")
+
     try:
-        os.environ['KAGGLE_CONFIG_DIR'] = str(kaggle_dir)
+        if kaggle_dir:
+            os.environ["KAGGLE_CONFIG_DIR"] = str(kaggle_dir)
         api = KaggleApi()
         api.authenticate()
-        
+
         if verbose:
-            print(f" Authentication successful!")
-        
+            print(" Authentication successful!")
+
         return api
-        
+
     except Exception as e:
-        print(f"  Authentication error: {e}")
+        print(f" Authentication error: {e}")
         print("\n Troubleshooting:")
-        print("   1. Make sure kaggle.json is not empty")
-        print("   2. Try re-downloading from Kaggle settings")
-        print("   3. Check your internet connection")
+        print("   1. Run `kaggle-prep --setup` to configure your credentials interactively.")
+        print("   2. Make sure kaggle.json is not empty.")
+        print("   3. Check your internet connection.")
         return None
 
 
@@ -159,12 +298,12 @@ def create_output_directory(output_dir):
 # ============================================================
 def format_file_size(size_bytes):
     """Convert bytes to human-readable format"""
-    if size_bytes > 1024 * 1024 * 1024:  # GB
-        return f"{size_bytes/(1024*1024*1024):.2f} GB"
-    elif size_bytes > 1024 * 1024:  # MB
-        return f"{size_bytes/(1024*1024):.1f} MB"
-    elif size_bytes > 1024:  # KB
-        return f"{size_bytes/1024:.1f} KB"
+    if size_bytes > 1024 * 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+    elif size_bytes > 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
+    elif size_bytes > 1024:
+        return f"{size_bytes / 1024:.1f} KB"
     else:
         return f"{size_bytes} bytes"
 
@@ -175,63 +314,122 @@ def format_file_size(size_bytes):
 def list_downloaded_files(output_path):
     """List all downloaded files with sizes"""
     print("\n Downloaded files:")
-    
-    files = list(output_path.rglob("*"))
+
+    files = [f for f in Path(output_path).rglob("*") if f.is_file()]
     if not files:
         print("  No files found!")
         return
-    
+
     for file in files:
-        if file.is_file():
-            size = file.stat().st_size
-            size_str = format_file_size(size)
-            print(f"  - {file.name} ({size_str})")
+        size = file.stat().st_size
+        size_str = format_file_size(size)
+        print(f"  - {file.name} ({size_str})")
 
 
 # ============================================================
-# FUNCTION 8: Load First CSV
+# FUNCTION 8: Load Dataset File (Multi-format support)
 # ============================================================
-def load_first_csv(data_path):
-    """Load the first CSV file found in the directory"""
-    csv_files = list(Path(data_path).rglob("*.csv"))
-    
-    if not csv_files:
-        print(" No CSV files found to profile!")
+def load_first_csv(data_path, sample: Optional[int] = None):
+    """Load the first tabular dataset file found in the directory"""
+    data_dir = Path(data_path)
+
+    # Search for supported extensions in priority order
+    extensions = ["*.csv", "*.parquet", "*.tsv", "*.xlsx", "*.json"]
+    found_files = []
+    for ext in extensions:
+        found_files.extend(list(data_dir.rglob(ext)))
+
+    if not found_files:
+        print(f" No tabular data files (*.csv, *.parquet, *.tsv, *.xlsx, *.json) found in {data_path}!")
         return None
-    
+
+    target_file = found_files[0]
+    suffix = target_file.suffix.lower()
+
     try:
-        df = pd.read_csv(csv_files[0])
-        print(f" Loaded: {csv_files[0].name} ({len(df):,} rows, {len(df.columns)} columns)")
+        if suffix == ".csv":
+            df = pd.read_csv(target_file, low_memory=False)
+        elif suffix == ".tsv":
+            df = pd.read_csv(target_file, sep="\t", low_memory=False)
+        elif suffix == ".parquet":
+            df = pd.read_parquet(target_file)
+        elif suffix == ".xlsx":
+            df = pd.read_excel(target_file)
+        elif suffix == ".json":
+            df = pd.read_json(target_file)
+        else:
+            df = pd.read_csv(target_file)
+
+        if sample and sample < len(df):
+            print(f" Sampling {sample:,} rows from {len(df):,} rows...")
+            df = df.sample(sample, random_state=42).reset_index(drop=True)
+
+        print(f" Loaded: {target_file.name} ({len(df):,} rows, {len(df.columns)} columns)")
         return df
+
     except Exception as e:
-        print(f" Error loading CSV: {e}")
+        print(f" Error loading {target_file.name}: {e}")
         return None
 
 
 # ============================================================
-# FUNCTION 9: Download Dataset
+# FUNCTION 9: Download Dataset (Zero-Config First)
 # ============================================================
 def download_dataset(api, dataset_name, output_path, verbose=False):
-    """Download a dataset from Kaggle"""
-    print(f"Downloading {dataset_name}...")
-    
+    """Download dataset - tries zero-config kagglehub first, falls back to Kaggle API"""
+    output_path = Path(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Method 1: Try kagglehub (Zero-config, no auth required for public datasets)
     try:
-        api.dataset_download_files(
-            dataset_name,
-            path=str(output_path),
-            unzip=True
-        )
-        
+        import kagglehub
+        print(f" Downloading '{dataset_name}' via kagglehub (Zero-Config mode)...")
+
+        path = kagglehub.dataset_download(dataset_name)
+        source_path = Path(path)
+
+        if source_path.is_file():
+            shutil.copy(source_path, output_path / source_path.name)
+        else:
+            for file in source_path.rglob("*"):
+                if file.is_file():
+                    dest = output_path / file.name
+                    shutil.copy(file, dest)
+
         print(f" Download complete! Files saved to: {output_path}")
-        
         if verbose:
             list_downloaded_files(output_path)
-        
         return True
-        
+
     except Exception as e:
-        handle_download_error(e, dataset_name)
-        return False
+        if verbose:
+            print(f" Direct kagglehub download notice: {e}")
+        print(" Falling back to authenticated Kaggle API download...")
+
+        # Method 2: Authenticated Kaggle API
+        if not api:
+            kaggle_dir = check_credentials(verbose)
+            if kaggle_dir:
+                api = authenticate_kaggle(kaggle_dir, verbose)
+
+        if not api:
+            print("\n Authenticated download requires Kaggle credentials.")
+            print(" Run `kaggle-prep --setup` to configure your API key.")
+            return False
+
+        try:
+            api.dataset_download_files(
+                dataset_name,
+                path=str(output_path),
+                unzip=True
+            )
+            print(f" Download complete! Files saved to: {output_path}")
+            if verbose:
+                list_downloaded_files(output_path)
+            return True
+        except Exception as e2:
+            handle_download_error(e2, dataset_name)
+            return False
 
 
 # ============================================================
@@ -239,21 +437,43 @@ def download_dataset(api, dataset_name, output_path, verbose=False):
 # ============================================================
 def download_competition(api, competition_name, output_path, verbose=False):
     """Download competition files from Kaggle"""
-    print(f" Downloading competition: {competition_name}...")
-    
+    output_path = Path(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    if not api:
+        kaggle_dir = check_credentials(verbose)
+        if not kaggle_dir:
+            print("\n Competition downloads require Kaggle credentials.")
+            print(" Run `kaggle-prep --setup` to configure your credentials.")
+            return False
+        api = authenticate_kaggle(kaggle_dir, verbose)
+        if not api:
+            return False
+
+    print(f" Downloading competition files for: {competition_name}...")
+
     try:
         api.competition_download_files(
             competition_name,
             path=str(output_path)
         )
-        
+
+        # Unzip any downloaded archives
+        for zip_file in output_path.glob("*.zip"):
+            import zipfile
+            try:
+                with zipfile.ZipFile(zip_file, "r") as zip_ref:
+                    zip_ref.extractall(output_path)
+            except Exception:
+                pass
+
         print(f" Download complete! Files saved to: {output_path}")
-        
+
         if verbose:
             list_downloaded_files(output_path)
-        
+
         return True
-        
+
     except Exception as e:
         handle_download_error(e, competition_name)
         return False
@@ -263,66 +483,62 @@ def download_competition(api, competition_name, output_path, verbose=False):
 # FUNCTION 11: Handle Download Errors
 # ============================================================
 def handle_download_error(error, dataset_name):
-    """Handle and explain download errors"""
-    print(f" Error downloading: {error}")
+    """Handle and explain download errors clearly"""
+    print(f"\n Error downloading: {error}")
     error_msg = str(error)
-    
-    if "403" in error_msg:
-        print("\n Troubleshooting 403 Forbidden error:")
-        print("This usually means the dataset requires accepting terms or is restricted.")
-        print(f"1. Visit: https://www.kaggle.com/datasets/{dataset_name}")
-        print("2. Click 'Download' and accept any terms")
-        print("3. Wait a moment, then try again")
-        print("\n Or try --competition flag if it's a competition:")
-        print(f"  python kaggle_prep/cli.py {dataset_name} --competition --verbose")
-        
-    elif "404" in error_msg:
-        print(f"\n Dataset '{dataset_name}' not found!")
-        print("Check the spelling or try searching on Kaggle")
+
+    if "401" in error_msg or "Unauthorized" in error_msg:
+        print("\n Troubleshooting 401 Unauthorized:")
+        print(" 1. Your Kaggle API token may be expired or invalid.")
+        print(" 2. Run `kaggle-prep --setup` to re-enter your credentials.")
+
+    elif "403" in error_msg or "Forbidden" in error_msg:
+        print("\n Troubleshooting 403 Forbidden:")
+        print(" This dataset/competition requires accepting competition rules or terms.")
+        print(f" 1. Visit: https://www.kaggle.com/datasets/{dataset_name} (or competitions/{dataset_name})")
+        print(" 2. Click 'Download' / 'Join Competition' and accept the rules.")
+        print(" 3. Try running kaggle-prep again.")
+
+    elif "404" in error_msg or "Not Found" in error_msg:
+        print(f"\n Dataset or competition '{dataset_name}' not found!")
+        print(" Check for typos or search Kaggle for the exact identifier (format: 'owner/dataset-name').")
         print("\n Examples:")
-        print("  python kaggle_prep/cli.py uciml/iris --verbose")
-        print("  python kaggle_prep/cli.py debayank2024/netflix-movies-and-series --verbose")
-        
-    elif "429" in error_msg:
-        print("\n  Rate limit reached!")
-        print("Kaggle limits how many requests you can make.")
-        print("Wait 1 hour and try again.")
-        
+        print("   kaggle-prep uciml/iris --all")
+        print("   kaggle-prep debayank2024/netflix-movies-and-series --all")
+        print("   kaggle-prep titanic --competition --all")
+
+    elif "429" in error_msg or "Too Many Requests" in error_msg:
+        print("\n Rate limit reached!")
+        print(" Kaggle limits the number of API requests per hour. Please wait a bit and try again.")
+
     else:
-        print(f"\n Unexpected error: {error}")
+        print("\n Unexpected error occurred.")
+        print(f" Details: {error}")
 
 
 # ============================================================
-# FUNCTION 12: Profile Downloaded Data
+# FUNCTION 12: Profiling, Reporting, Visualization & Notebook Helpers
 # ============================================================
-def profile_downloaded_data(output_path, dataset_name, generate_report=False):
-    """Run profiling on downloaded data"""
-    
+def run_profiling(df: pd.DataFrame, dataset_name: str, generate_report: bool = False):
+    """Run profiling on data"""
     print("\n Generating data profile...")
-    
-    # Load the data
-    df = load_first_csv(Path(output_path))
-    if df is None:
-        return
-    
-    # Create profile using our custom profiler
     profiler = DataProfiler(df, dataset_name)
     profile = profiler.profile()
-    
-    # Save JSON profile
+
     json_path = save_profile_json(profile)
-    
-    # Print summary to console
     print_profile_summary(profile)
-    
-    # Generate HTML report if requested
+
     if generate_report:
         generate_standalone_report(profile)
 
-def generate_starter_notebook(output_path, dataset_name, df=None, profile=None):
-    print("Generating starter notebook...")
+    return profile
+
+
+def generate_starter_notebook(output_path, dataset_name: str, df=None, profile=None):
+    """Generate starter Jupyter notebook"""
+    print("\n Generating starter Jupyter notebook...")
     if df is None:
-        df=load_first_csv(output_path)
+        df = load_first_csv(output_path)
 
     notebook_path = generate_notebook(
         dataset_name=dataset_name,
@@ -331,128 +547,176 @@ def generate_starter_notebook(output_path, dataset_name, df=None, profile=None):
         output_dir="notebooks"
     )
     print(f" Starter notebook saved to: {notebook_path}")
+    return notebook_path
 
-#===============================================================
-def generate_visualizations(output_path, dataset_name,df):
-    print("Generating EDA visualizations..")
 
-    vis_dir =f"eda_plots_{dataset_name.replace('/','_')}"
+def generate_visualizations(output_path, dataset_name: str, df: pd.DataFrame,
+                            target: Optional[str] = None, max_cols: int = 10,
+                            fig_dpi: int = 150, fig_format: str = "png"):
+    """Generate EDA visualizations"""
+    safe_name = dataset_name.replace("/", "_")
+    vis_dir = f"eda_plots_{safe_name}"
 
     plot_path = generate_eda_plots(
         df=df,
         output_dir=vis_dir,
-        max_cols=10,
-        fig_dpi=150
+        max_cols=max_cols,
+        fig_dpi=fig_dpi,
+        fig_format=fig_format,
+        target=target
     )
-    
     print(f" Visualizations saved to: {plot_path}")
     return plot_path
-##==============================================
-def save_preprocessing_code(output_path, dataset_name, df):
-    """Generate and save preprocessing code"""
-    
-    print("\n Generating preprocessing code...")
-    
-    # Generate code
+
+
+def save_preprocessing_code(output_path, dataset_name: str, df: pd.DataFrame):
+    """Generate and save preprocessing Python script"""
+    print("\n Generating preprocessing pipeline code...")
     code = generate_preprocessing_code(df)
-    
-    # Save to file
-    safe_name = dataset_name.replace('/', '_')
+
+    safe_name = dataset_name.replace("/", "_")
     code_path = Path(output_path) / f"{safe_name}_preprocess.py"
-    
-    with open(code_path, 'w', encoding='utf-8') as f:
+
+    with open(code_path, "w", encoding="utf-8") as f:
         f.write(code)
-    
+
     print(f" Preprocessing code saved to: {code_path}")
     return code_path
+
 
 # ============================================================
 # MAIN FUNCTION
 # ============================================================
 def main():
     """Main entry point for the CLI tool"""
-    
-    # Step 1: Get user input
     args = parse_arguments()
-    
-    # Step 2: Show startup info
-    display_startup_info(args)
-    
-    # Step 3: Check if data exists
+
+    # Handle interactive setup command
+    if args.setup:
+        run_interactive_setup()
+        return
+
+    # Check if dataset name was provided
+    if not args.dataset:
+        print("\n" + "=" * 60)
+        print("  Kaggle Prep - One-Command Dataset Preparation & EDA")
+        print("=" * 60)
+        print("\n Usage:")
+        print("   kaggle-prep <dataset_identifier> [options]")
+        print("\n Common Commands:")
+        print("   kaggle-prep uciml/iris --all")
+        print("   kaggle-prep uciml/iris --profile --report")
+        print("   kaggle-prep titanic --competition --all")
+        print("   kaggle-prep --setup")
+        print("\n Run `kaggle-prep --help` for full options list.")
+        return
+
+    # Handle --all flag
+    if args.all:
+        args.profile = True
+        args.report = True
+        args.visualize = True
+        args.preprocess = True
+        args.notebook = True
+
+    # Default action if no flags provided: profile and report
+    has_action = (args.profile or args.report or args.visualize or
+                  args.preprocess or args.notebook)
+    if not has_action and not args.local:
+        # Default behavior: download + profile + report
+        args.profile = True
+        args.report = True
+
+    if args.verbose:
+        print(f" Dataset: {args.dataset}")
+        print(f" Output directory: {args.output_dir}")
+        if args.competition:
+            print(" Competition mode enabled")
+        if args.target:
+            print(f" Target column: {args.target}")
+
     output_path = Path(args.output_dir)
-    data_exists = any(output_path.glob("*.csv")) or any(output_path.glob("*.xlsx"))
-    
+    data_extensions = ["*.csv", "*.parquet", "*.tsv", "*.xlsx", "*.json"]
+    data_exists = any(any(output_path.glob(ext)) for ext in data_extensions)
+
     # Step 4: Handle download logic
+    api = None
     if args.local:
         if data_exists:
-            print("Using existing data (--local flag detected)")
-            print(f"   Data found in: {output_path}")
+            print(f" Using existing local data in: {output_path}")
         else:
-            print(f"No data found in {output_path}")
-            print("Please download data first (remove --local flag)")
+            print(f" No data found in {output_path} to use with --local!")
+            print(" Please run without --local to download first.")
             return
     else:
-        # Download normally
         if not data_exists:
-            print("No existing data found. Downloading...")
+            print(f" No local data found in '{output_path}'. Initiating download...")
         else:
-            print("Downloading data (use --local to skip download next time)")
-        
-        # Check credentials
-        kaggle_dir = check_credentials(args.verbose)
-        if not kaggle_dir:
-            return
-        
-        # Authenticate
-        api = authenticate_kaggle(kaggle_dir, args.verbose)
-        if not api:
-            return
-        
-        # Create output directory
+            print(f" Downloading/updating data in: {output_path}")
+
         create_output_directory(args.output_dir)
-        
-        # Download
+
         if args.competition:
-            download_competition(api, args.dataset, output_path, args.verbose)
+            success = download_competition(api, args.dataset, output_path, args.verbose)
         else:
-            download_dataset(api, args.dataset, output_path, args.verbose)
-    
-    # Step 5: Load data for profiling and visualization
+            success = download_dataset(api, args.dataset, output_path, args.verbose)
+
+        if not success and not data_exists:
+            print("\n Could not obtain dataset. Aborting analysis.")
+            return
+
+    # Step 5: Load data for profiling and downstream tasks
     df = None
     profile = None
-    
+
     if args.profile or args.report or args.visualize or args.preprocess or args.notebook:
-        df = load_first_csv(Path(args.output_dir))
-        
+        df = load_first_csv(output_path, sample=args.sample)
+
         if df is not None:
-            # Generate profile if requested
+            # Generate profile & report if requested
             if args.profile or args.report:
                 profiler = DataProfiler(df, args.dataset)
                 profile = profiler.profile()
-                
+
                 if args.profile:
-                    json_path = save_profile_json(profile)
-                
+                    save_profile_json(profile)
+                    print_profile_summary(profile)
+
                 if args.report:
                     generate_standalone_report(profile)
-            
+
             # Generate visualizations if requested
             if args.visualize:
-                generate_visualizations(output_path, args.dataset, df)
-            
+                generate_visualizations(
+                    output_path=output_path,
+                    dataset_name=args.dataset,
+                    df=df,
+                    target=args.target,
+                    max_cols=args.max_cols,
+                    fig_dpi=args.dpi,
+                    fig_format=args.fig_format
+                )
+
             # Generate preprocessing code if requested
             if args.preprocess:
                 save_preprocessing_code(output_path, args.dataset, df)
-            
-            # Generate notebook if requested
-            if args.notebook:
-                generate_starter_notebook(args.dataset, df, profile)
-    
-    # Step 6: Done!
-    print("\nAll done! Happy data science!")
 
-# ============================================================
-# ENTRY POINT
-# ============================================================
+            # Generate starter notebook if requested
+            if args.notebook:
+                generate_starter_notebook(
+                    output_path=output_path,
+                    dataset_name=args.dataset,
+                    df=df,
+                    profile=profile
+                )
+        else:
+            print(" Skipping downstream EDA tasks (no valid tabular data found).")
+
+    # Step 6: Completion Banner
+    print("\n" + "=" * 60)
+    print(" All tasks completed successfully! Happy data science!")
+    print("=" * 60 + "\n")
+
+
 if __name__ == "__main__":
     main()
