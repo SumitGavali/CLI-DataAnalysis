@@ -1,7 +1,7 @@
-# ⚡ Kaggle Prep
+#  Kaggle Prep
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SumitGavali/kaggle-prep/main/docs/banner.png" alt="Kaggle Prep Banner" width="700" onerror="this.style.display='none'"/>
+  <img src="https://i.pinimg.com/736x/aa/db/ac/aadbac8f3df73fe8655a4f2d21923c86.jpg" alt="Kaggle Prep Banner" width="700" onerror="this.style.display='none'"/>
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ---
 
-## 📖 Table of Contents
+##  Table of Contents
 
 - [Why Kaggle Prep?](#-why-kaggle-prep)
 - [Key Features](#-key-features)
@@ -33,7 +33,7 @@
 
 ---
 
-## 🚀 Why Kaggle Prep?
+##  Why Kaggle Prep?
 
 Setting up a new data science project or Kaggle competition usually takes 30–60 minutes of repetitive boilerplate:
 1. Downloading and unzipping files.
@@ -50,13 +50,13 @@ kaggle-prep uciml/iris --all --target Species
 
 ---
 
-## ✨ Key Features
+##  Key Features
 
-1. **⚡ Zero-Config Smart Download**: Instantly download public Kaggle datasets without needing API keys upfront using built-in `kagglehub` integration.
-2. **🔑 Interactive Setup Wizard (`--setup`)**: Configure and validate your Kaggle API credentials interactively in seconds.
-3. **📊 Instant Automated Profiling**: Compute row/col counts, missing rates, data types, duplicate counts, IQR outliers, skewness, and cardinality.
-4. **🌐 Standalone HTML Reports**: Generates responsive, self-contained HTML reports with zero external runtime dependencies.
-5. **🎨 10+ Production EDA Visualizations**:
+1. **Zero-Config Smart Download**: Instantly download public Kaggle datasets without needing API keys upfront using built-in `kagglehub` integration.
+2. **Interactive Setup Wizard (`--setup`)**: Configure and validate your Kaggle API credentials interactively in seconds.
+3. **Instant Automated Profiling**: Compute row/col counts, missing rates, data types, duplicate counts, IQR outliers, skewness, and cardinality.
+4. **Standalone HTML Reports**: Generates responsive, self-contained HTML reports with zero external runtime dependencies.
+5. **10+ Production EDA Visualizations**:
    - Dataset overview & metric cards
    - Missing value matrix & percent heatmaps
    - Feature distribution histograms & KDE curves
@@ -66,13 +66,13 @@ kaggle-prep uciml/iris --all --target Species
    - High-cardinality flags & categorical frequency bar charts
    - Datetime row count trends
    - **Target-Aware Analysis**: Class balance bar/pie charts and feature distributions segmented by target class.
-6. **🐍 Auto-Generated Preprocessing Scripts**: Clean Python code with Scikit-Learn pipelines tailored to your dataset's column schema.
-7. **📓 Complete Starter Jupyter Notebooks**: Pre-configured with modular sections: imports, EDA, missing analysis, outlier detection, ML preprocessing, and baseline model training.
-8. **🌐 Multi-Format & Universal Python Support**: Works natively on **Python 3.9, 3.10, 3.11, 3.12, and 3.13+** across Windows, macOS, and Linux. Supports `.csv`, `.tsv`, `.parquet`, `.xlsx`, and `.json`.
+6. **Auto-Generated Preprocessing Scripts**: Clean Python code with Scikit-Learn pipelines tailored to your dataset's column schema.
+7. **Complete Starter Jupyter Notebooks**: Pre-configured with modular sections: imports, EDA, missing analysis, outlier detection, ML preprocessing, and baseline model training.
+8. **Multi-Format & Universal Python Support**: Works natively on **Python 3.9, 3.10, 3.11, 3.12, and 3.13+** across Windows, macOS, and Linux. Supports `.csv`, `.tsv`, `.parquet`, `.xlsx`, and `.json`.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Standard Installation (via `pip`)
 ```bash
@@ -98,7 +98,7 @@ pip install -e .
 
 ---
 
-## 🔑 Kaggle Credentials Setup
+##  Kaggle Credentials Setup
 
 ### Option 1: Interactive Wizard (Recommended)
 Simply run the setup wizard:
@@ -124,7 +124,7 @@ For public datasets, `kaggle-prep` automatically uses `kagglehub` to download da
 
 ---
 
-## ⚡ Quick Start in 30 Seconds
+## Quick Start in 30 Seconds
 
 ### 1. Full Automated Analysis (All-in-One)
 ```bash
@@ -149,7 +149,7 @@ kaggle-prep my-dataset --local --all
 
 ---
 
-## 🛠️ CLI Command Reference
+##  CLI Command Reference
 
 ```text
 Usage: kaggle-prep [dataset] [OPTIONS]
@@ -218,7 +218,7 @@ project_root/
 
 ---
 
-## 🚨 Comprehensive Error & Troubleshooting Guide
+##  Comprehensive Error & Troubleshooting Guide
 
 ### 1. `401 Unauthorized` / `Authentication Error`
 * **Cause**: Your `kaggle.json` token is missing, expired, or corrupted.
@@ -284,7 +284,7 @@ project_root/
 
 ---
 
-## 💻 Development & Contributing
+##  Development & Contributing
 
 Contributions are welcome! Follow these steps to set up the development environment:
 
@@ -307,7 +307,7 @@ python -m pytest tests/ -v
 
 ---
 
-## 📄 License
+##  License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
 

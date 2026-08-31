@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kaggle-prep"
-version = "0.3.0"
+version = "0.4.1"
 description = "One-command Kaggle dataset preparation, profiling, visualization & starter notebook generation tool"
 readme = "README.md"
 license = {text = "MIT"}
@@ -55,12 +55,16 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/SumitGavali/kaggle-prep"
-Repository = "https://github.com/SumitGavali/kaggle-prep"
-Issues = "https://github.com/SumitGavali/kaggle-prep/issues"
+Homepage = "https://github.com/SumitGavali/CLI-DataAnalysis"
+Repository = "https://github.com/SumitGavali/CLI-DataAnalysis"
+Issues = "https://github.com/SumitGavali/CLI-DataAnalysis/issues"
 
 [project.scripts]
 kaggle-prep = "kaggle_prep.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["kaggle_prep*"]
+exclude = ["tests*", "docs*", "data*", "reports*", "eda_plots*", "notebooks*", "data_profiles*", "dist*"]
+
+[tool.setuptools.package-data]
+kaggle_prep = ["*.py"]
