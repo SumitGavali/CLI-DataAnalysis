@@ -12,8 +12,8 @@
   <a href="https://pypi.org/project/kaggle-prep/"><img src="https://img.shields.io/badge/pypi-v0.3.0-blue.svg" alt="PyPI version"></a>
   <a href="https://pypi.org/project/kaggle-prep/"><img src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://github.com/SumitGavali/kaggle-prep/actions"><img src="https://img.shields.io/badge/tests-12%20passed-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/SumitGavali/kaggle-prep/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <a href="https://github.com/SumitGavali/CLI-DataAnalysis/actions"><img src="https://img.shields.io/badge/tests-12%20passed-brightgreen.svg" alt="Tests"></a>
+  <a href="https://github.com/SumitGavali/CLI-DataAnalysis/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
 </p>
 
 ---
@@ -91,8 +91,8 @@ pipx install kaggle-prep
 
 ### Install from Source
 ```bash
-git clone https://github.com/SumitGavali/kaggle-prep.git
-cd kaggle-prep
+git clone https://github.com/SumitGavali/CLI-DataAnalysis.git 
+cd CLI-DataAnalysis
 pip install -e .
 ```
 
@@ -290,7 +290,7 @@ Contributions are welcome! Follow these steps to set up the development environm
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/SumitGavali/kaggle-prep.git
+git clone https://github.com/SumitGavali/CLI-DataAnalysis.git
 cd kaggle-prep
 
 # 2. Install editable version with test dependencies
