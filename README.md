@@ -1,7 +1,7 @@
 #  Kaggle Prep
 
 <p align="center">
-  <img src="https://i.pinimg.com/736x/aa/db/ac/aadbac8f3df73fe8655a4f2d21923c86.jpg" alt="Kaggle Prep Banner" width="700" onerror="this.style.display='none'"/>
+  <img src="https://i.pinimg.com/736x/aa/db/ac/aadbac8f3df73fe8655a4f2d21923c86.jpg" alt="Kaggle Prep Banner" width="100" height='90' onerror="this.style.display='none'"/>
 </p>
 
 <p align="center">
