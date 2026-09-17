@@ -31,6 +31,18 @@ from .notebook import generate_notebook
 from .profiler import DataProfiler, print_profile_summary, save_profile_json
 from .report import generate_standalone_report
 from .visualizer import generate_eda_plots, generate_preprocessing_code
+from .ingestion import get_source_adapter
+from .intelligence import (
+    detect_task_type,
+    analyze_class_balance,
+    recommend_metrics,
+    determine_split_strategy,
+    format_intelligence_summary,
+)
+from .audit import DataAuditor, format_audit_summary
+from .env_pin import generate_pinned_requirements, generate_conda_environment, check_environment, format_env_check_summary
+from .diff import save_snapshot_json, load_snapshot_json, diff_snapshots, format_diff_cli_table
+from .pipeline_exporter import export_pipeline_code
 
 
 # ============================================================
@@ -49,6 +61,36 @@ def parse_arguments():
         nargs="?",
         default=None,
         help="Kaggle dataset identifier, e.g. 'uciml/iris' or competition name"
+    )
+
+    parser.add_argument(
+        "--file", "-f",
+        default=None,
+        help="Path to local CSV, Parquet, JSON, Excel, or TSV file"
+    )
+
+    parser.add_argument(
+        "--db",
+        default=None,
+        help="SQLAlchemy database connection string (e.g., 'sqlite:///data.db')"
+    )
+
+    parser.add_argument(
+        "--query",
+        default=None,
+        help="SQL query to execute against database"
+    )
+
+    parser.add_argument(
+        "--table",
+        default=None,
+        help="Database table name to query"
+    )
+
+    parser.add_argument(
+        "--s3",
+        default=None,
+        help="S3 object URI (e.g., 's3://bucket/data.parquet')"
     )
 
     parser.add_argument(
@@ -122,6 +164,48 @@ def parse_arguments():
         "--target", "-t",
         default=None,
         help="Target column name for supervised EDA & modeling"
+    )
+
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="Run active data quality and leakage audit"
+    )
+
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with non-zero code if critical audit issues are detected"
+    )
+
+    parser.add_argument(
+        "--test-file",
+        default=None,
+        help="Path to test dataset file for train/test leakage and drift auditing"
+    )
+
+    parser.add_argument(
+        "--conda",
+        action="store_true",
+        help="Generate Conda environment.yml alongside requirements.txt"
+    )
+
+    parser.add_argument(
+        "--check-env",
+        default=None,
+        help="Compare current environment against a pinned requirements.txt file"
+    )
+
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Perform incremental profiling by reusing cached column stats for unchanged data"
+    )
+
+    parser.add_argument(
+        "--export-pipeline",
+        action="store_true",
+        help="Export baseline model as reusable, unit-testable Python pipeline module"
     )
 
     parser.add_argument(
@@ -534,8 +618,8 @@ def run_profiling(df: pd.DataFrame, dataset_name: str, generate_report: bool = F
     return profile
 
 
-def generate_starter_notebook(output_path, dataset_name: str, df=None, profile=None):
-    """Generate starter Jupyter notebook"""
+def generate_starter_notebook(output_path, dataset_name: str, df=None, profile=None, target: Optional[str] = None, conda: bool = False):
+    """Generate starter Jupyter notebook and pinned requirements"""
     print("\n Generating starter Jupyter notebook...")
     if df is None:
         df = load_first_csv(output_path)
@@ -544,9 +628,18 @@ def generate_starter_notebook(output_path, dataset_name: str, df=None, profile=N
         dataset_name=dataset_name,
         df=df,
         profile=profile,
+        target=target,
         output_dir="notebooks"
     )
     print(f" Starter notebook saved to: {notebook_path}")
+
+    # Generate reproducible environment files
+    req_path = generate_pinned_requirements(output_dir="notebooks")
+    print(f" Pinned requirements saved to: {req_path}")
+    if conda:
+        conda_path = generate_conda_environment(output_dir="notebooks")
+        print(f" Conda environment file saved to: {conda_path}")
+
     return notebook_path
 
 
@@ -589,24 +682,48 @@ def save_preprocessing_code(output_path, dataset_name: str, df: pd.DataFrame):
 # ============================================================
 def main():
     """Main entry point for the CLI tool"""
+    # Check for `kaggle-prep diff <old> <new>` subcommand
+    if len(sys.argv) >= 4 and sys.argv[1] == "diff":
+        old_path = sys.argv[2]
+        new_path = sys.argv[3]
+        try:
+            old_snap = load_snapshot_json(old_path)
+            new_snap = load_snapshot_json(new_path)
+            diff_res = diff_snapshots(old_snap, new_snap)
+            print("\n" + format_diff_cli_table(diff_res) + "\n")
+            return
+        except Exception as e:
+            print(f" Error running diff: {e}")
+            sys.exit(1)
+
     args = parse_arguments()
 
-    # Handle interactive setup command
-    if args.setup:
-        run_interactive_setup()
-        return
+    # Handle --check-env mode
+    if args.check_env:
+        try:
+            res = check_environment(args.check_env)
+            print("\n" + format_env_check_summary(res) + "\n")
+            if res["has_drift"]:
+                sys.exit(1)
+            return
+        except Exception as e:
+            print(f" Error checking environment: {e}")
+            sys.exit(1)
 
-    # Check if dataset name was provided
-    if not args.dataset:
+    # Check if any input source was provided
+    has_input = bool(args.dataset or args.file or args.db or args.s3)
+    if not has_input:
         print("\n" + "=" * 60)
         print("  Kaggle Prep - One-Command Dataset Preparation & EDA")
         print("=" * 60)
         print("\n Usage:")
         print("   kaggle-prep <dataset_identifier> [options]")
+        print("   kaggle-prep --file <path> [options]")
+        print("   kaggle-prep --db <conn_str> --table <table> [options]")
+        print("   kaggle-prep --s3 <s3_uri> [options]")
         print("\n Common Commands:")
         print("   kaggle-prep uciml/iris --all")
-        print("   kaggle-prep uciml/iris --profile --report")
-        print("   kaggle-prep titanic --competition --all")
+        print("   kaggle-prep --file data.csv --all")
         print("   kaggle-prep --setup")
         print("\n Run `kaggle-prep --help` for full options list.")
         return
@@ -623,100 +740,143 @@ def main():
     has_action = (args.profile or args.report or args.visualize or
                   args.preprocess or args.notebook)
     if not has_action and not args.local:
-        # Default behavior: download + profile + report
+        # Default behavior: profile + report
         args.profile = True
         args.report = True
 
+    try:
+        adapter = get_source_adapter(
+            dataset=args.dataset,
+            file_path=args.file,
+            db_conn=args.db,
+            query=args.query,
+            table=args.table,
+            s3_uri=args.s3,
+            output_dir=args.output_dir,
+            competition=args.competition,
+            local=args.local,
+            verbose=args.verbose,
+        )
+    except Exception as e:
+        print(f" Ingestion Error: {e}")
+        sys.exit(1)
+
+    dataset_name = adapter.dataset_name
     if args.verbose:
-        print(f" Dataset: {args.dataset}")
+        print(f" Source dataset: {dataset_name}")
         print(f" Output directory: {args.output_dir}")
-        if args.competition:
-            print(" Competition mode enabled")
         if args.target:
             print(f" Target column: {args.target}")
 
     output_path = Path(args.output_dir)
-    data_extensions = ["*.csv", "*.parquet", "*.tsv", "*.xlsx", "*.json"]
-    data_exists = any(any(output_path.glob(ext)) for ext in data_extensions)
 
-    # Step 4: Handle download logic
-    api = None
-    if args.local:
-        if data_exists:
-            print(f" Using existing local data in: {output_path}")
-        else:
-            print(f" No data found in {output_path} to use with --local!")
-            print(" Please run without --local to download first.")
-            return
-    else:
-        if not data_exists:
-            print(f" No local data found in '{output_path}'. Initiating download...")
-        else:
-            print(f" Downloading/updating data in: {output_path}")
+    try:
+        df = adapter.load_dataframe(sample=args.sample)
+    except Exception as e:
+        print(f" Error loading data: {e}")
+        sys.exit(1)
 
-        create_output_directory(args.output_dir)
-
-        if args.competition:
-            success = download_competition(api, args.dataset, output_path, args.verbose)
-        else:
-            success = download_dataset(api, args.dataset, output_path, args.verbose)
-
-        if not success and not data_exists:
-            print("\n Could not obtain dataset. Aborting analysis.")
-            return
-
-    # Step 5: Load data for profiling and downstream tasks
-    df = None
     profile = None
+    audit_results = None
 
-    if args.profile or args.report or args.visualize or args.preprocess or args.notebook:
-        df = load_first_csv(output_path, sample=args.sample)
+    if df is not None:
+        # Target intelligence analysis
+        if args.target and args.target in df.columns:
+            task_type = detect_task_type(df, args.target)
+            class_info = analyze_class_balance(df, args.target) if "classification" in task_type else None
+            metrics = recommend_metrics(task_type, class_info)
+            split_info = determine_split_strategy(task_type)
+            summary_str = format_intelligence_summary(args.target, task_type, class_info, metrics, split_info)
+            print("\n" + summary_str + "\n")
+        elif args.target:
+            print(f" Warning: Target column '{args.target}' not found in dataframe.")
 
-        if df is not None:
-            # Generate profile & report if requested
-            if args.profile or args.report:
-                profiler = DataProfiler(df, args.dataset)
-                profile = profiler.profile()
+        # Data Quality & Leakage Audit
+        if args.audit or args.strict:
+            test_df = None
+            if args.test_file:
+                try:
+                    test_adapter = get_source_adapter(file_path=args.test_file)
+                    test_df = test_adapter.load_dataframe()
+                except Exception as e:
+                    print(f" Warning: Failed to load test file for audit: {e}")
 
-                if args.profile:
-                    save_profile_json(profile)
-                    print_profile_summary(profile)
+            auditor = DataAuditor(df, target_col=args.target, test_df=test_df)
+            audit_results = auditor.audit()
+            print("\n" + format_audit_summary(audit_results) + "\n")
 
-                if args.report:
-                    generate_standalone_report(profile)
+        # Generate profile & report if requested
+        if args.profile or args.report:
+            prior_profile = None
+            snapshot_path = Path("data_profiles") / f"{dataset_name.replace('/', '_')}_snapshot.json"
+            if args.update and snapshot_path.exists():
+                try:
+                    prior_profile = load_snapshot_json(str(snapshot_path))
+                    print(f" Incremental profiling: Loaded prior snapshot from {snapshot_path}")
+                except Exception:
+                    pass
 
-            # Generate visualizations if requested
-            if args.visualize:
-                generate_visualizations(
-                    output_path=output_path,
-                    dataset_name=args.dataset,
-                    df=df,
-                    target=args.target,
-                    max_cols=args.max_cols,
-                    fig_dpi=args.dpi,
-                    fig_format=args.fig_format
-                )
+            profiler = DataProfiler(df, dataset_name, prior_profile=prior_profile)
+            profile = profiler.profile()
+            save_snapshot_json(profile, str(snapshot_path))
 
-            # Generate preprocessing code if requested
-            if args.preprocess:
-                save_preprocessing_code(output_path, args.dataset, df)
+            if args.profile:
+                save_profile_json(profile)
+                print_profile_summary(profile)
 
-            # Generate starter notebook if requested
-            if args.notebook:
-                generate_starter_notebook(
-                    output_path=output_path,
-                    dataset_name=args.dataset,
-                    df=df,
-                    profile=profile
-                )
-        else:
-            print(" Skipping downstream EDA tasks (no valid tabular data found).")
+            if args.report:
+                generate_standalone_report(profile, audit_results=audit_results)
+
+        # Generate visualizations if requested
+        if args.visualize:
+            generate_visualizations(
+                output_path=output_path,
+                dataset_name=dataset_name,
+                df=df,
+                target=args.target,
+                max_cols=args.max_cols,
+                fig_dpi=args.dpi,
+                fig_format=args.fig_format
+            )
+
+        # Generate preprocessing code if requested
+        if args.preprocess:
+            save_preprocessing_code(output_path, dataset_name, df)
+
+        # Generate starter notebook if requested
+        if args.notebook:
+            generate_starter_notebook(
+                output_path=output_path,
+                dataset_name=dataset_name,
+                df=df,
+                profile=profile,
+                target=args.target,
+                conda=args.conda
+            )
+
+        # Export reusable pipeline code if requested
+        if args.export_pipeline:
+            print("\n Exporting baseline scikit-learn pipeline code...")
+            p_py, t_py = export_pipeline_code(
+                df=df,
+                target_col=args.target,
+                task_type=task_type if 'task_type' in locals() else None,
+                output_dir="src"
+            )
+            print(f" Reusable pipeline module saved to: {p_py}")
+            print(f" Pipeline unit tests saved to: {t_py}")
+    else:
+        print(" Skipping downstream EDA tasks (no valid tabular data found).")
 
     # Step 6: Completion Banner
     print("\n" + "=" * 60)
     print(" All tasks completed successfully! Happy data science!")
     print("=" * 60 + "\n")
 
+    if args.strict and audit_results and audit_results.get("has_critical"):
+        print(" Strict mode enabled: Critical audit issues detected! Exiting with status 1.")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    main()
+    main()

@@ -11,22 +11,28 @@ import pandas as pd
 import numpy as np
 
 
+from .diff import compute_column_hash, compute_dataframe_column_hashes
+
+
 class DataProfiler:
-    """Fast, dependency-free data profiler"""
+    """Fast, dependency-free data profiler with incremental profiling support"""
     
-    def __init__(self, df: pd.DataFrame, dataset_name: str):
+    def __init__(self, df: pd.DataFrame, dataset_name: str, prior_profile: Dict = None):
         self.df = df
         self.dataset_name = dataset_name
+        self.prior_profile = prior_profile
         self._profile_data = None
         
     def profile(self) -> Dict[str, Any]:
         """Generate complete data profile"""
+        col_hashes = compute_dataframe_column_hashes(self.df)
         
         self._profile_data = {
             'dataset': self.dataset_name,
             'generated_at': time.strftime('%Y-%m-%d %H:%M:%S'),
             'basic_stats': self._get_basic_stats(),
-            'columns': self._get_column_stats(),
+            'columns': self._get_column_stats(col_hashes),
+            'column_hashes': col_hashes,
             'warnings': self._get_warnings(),
             'suggestions': self._get_suggestions()
         }
@@ -51,11 +57,17 @@ class DataProfiler:
             'bool_cols': len(df.select_dtypes(include=['bool']).columns)
         }
     
-    def _get_column_stats(self) -> Dict:
-        """Detailed column analysis"""
+    def _get_column_stats(self, col_hashes: Dict[str, str] = None) -> Dict:
+        """Detailed column analysis with incremental hashing reuse"""
         column_stats = {}
-        
+        prior_hashes = self.prior_profile.get("column_hashes", {}) if self.prior_profile else {}
+        prior_cols = self.prior_profile.get("columns", {}) if self.prior_profile else {}
+
         for col in self.df.columns:
+            if col_hashes and col in col_hashes and prior_hashes.get(col) == col_hashes[col] and col in prior_cols:
+                column_stats[col] = prior_cols[col]
+                continue
+
             col_data = self.df[col]
             
             stats = {

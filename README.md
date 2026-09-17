@@ -52,11 +52,16 @@ kaggle-prep uciml/iris --all --target Species
 
 ##  Key Features
 
-1. **Zero-Config Smart Download**: Instantly download public Kaggle datasets without needing API keys upfront using built-in `kagglehub` integration.
-2. **Interactive Setup Wizard (`--setup`)**: Configure and validate your Kaggle API credentials interactively in seconds.
-3. **Instant Automated Profiling**: Compute row/col counts, missing rates, data types, duplicate counts, IQR outliers, skewness, and cardinality.
-4. **Standalone HTML Reports**: Generates responsive, self-contained HTML reports with zero external runtime dependencies.
-5. **10+ Production EDA Visualizations**:
+1. **Generic Tabular Ingestion**: Load local files (`--file data.csv` / `.parquet` / `.xlsx` / `.json`), SQL databases (`--db <conn_str>` with `--query` or `--table`), S3 objects (`--s3 s3://...`), or Kaggle dataset slugs / competitions.
+2. **Target-Aware & Task-Aware Intelligence (`--target`)**: Auto-detect ML task types (binary classification, multiclass, regression, time-series), calculate class imbalance, recommend baseline metrics (ROC-AUC, Macro-F1, RMSE), and generate matching split strategies in notebooks (stratified, time-based, random).
+3. **Data Quality & Leakage Audit (`--audit`)**: Perform automated active checks for target leakage (high correlation/mutual info), ID-like columns, near-constant features, duplicate rows, and train/test distribution drift (KS-test). Supports `--strict` for non-zero CI exit codes.
+4. **Reproducible Environment Pinning**: Introspect environment to output pinned `requirements.txt` and `environment.yml` (`--conda`), and verify environment reproducibility using `kaggle-prep --check-env <req.txt>`.
+5. **Incremental Profiling & Dataset Diffing (`--update`, `diff`)**: Fast column-hashed re-profiling using `--update`, and compare two dataset profiling snapshots with `kaggle-prep diff snapshot1.json snapshot2.json`.
+6. **Reusable Pipeline Code Export (`--export-pipeline`)**: Export baseline ML models as standalone, unit-testable Scikit-Learn `pipeline.py` modules alongside a generated `test_pipeline.py` pytest suite.
+7. **Zero-Config Smart Download**: Instantly download public Kaggle datasets without needing API keys upfront using built-in `kagglehub` integration.
+8. **Interactive Setup Wizard (`--setup`)**: Configure and validate your Kaggle API credentials interactively in seconds.
+9. **Standalone HTML Reports**: Generates responsive, self-contained HTML reports with zero external runtime dependencies.
+10. **10+ Production EDA Visualizations**:
    - Dataset overview & metric cards
    - Missing value matrix & percent heatmaps
    - Feature distribution histograms & KDE curves
@@ -66,9 +71,6 @@ kaggle-prep uciml/iris --all --target Species
    - High-cardinality flags & categorical frequency bar charts
    - Datetime row count trends
    - **Target-Aware Analysis**: Class balance bar/pie charts and feature distributions segmented by target class.
-6. **Auto-Generated Preprocessing Scripts**: Clean Python code with Scikit-Learn pipelines tailored to your dataset's column schema.
-7. **Complete Starter Jupyter Notebooks**: Pre-configured with modular sections: imports, EDA, missing analysis, outlier detection, ML preprocessing, and baseline model training.
-8. **Multi-Format & Universal Python Support**: Works natively on **Python 3.9, 3.10, 3.11, 3.12, and 3.13+** across Windows, macOS, and Linux. Supports `.csv`, `.tsv`, `.parquet`, `.xlsx`, and `.json`.
 
 ---
 
@@ -143,8 +145,8 @@ kaggle-prep titanic --competition --all --target Survived
 
 ### 4. Analyze Existing Local Data
 ```bash
-# Point to an existing local dataset folder
-kaggle-prep my-dataset --local --all
+# Point to an existing local dataset file
+kaggle-prep --file my_data.csv --all --target label
 ```
 
 ---
@@ -153,9 +155,17 @@ kaggle-prep my-dataset --local --all
 
 ```text
 Usage: kaggle-prep [dataset] [OPTIONS]
+       kaggle-prep diff <old_snapshot.json> <new_snapshot.json>
 
 Positional Arguments:
   dataset                     Kaggle dataset slug (e.g. 'uciml/iris') or competition name
+
+Generic Ingestion Sources (Mutually Exclusive with Kaggle slug):
+  -f, --file PATH             Path to local CSV, Parquet, JSON, Excel, or TSV file
+      --db CONN_STR           SQLAlchemy database connection string
+      --query SQL             SQL query string for database ingestion
+      --table NAME            Database table name for ingestion
+      --s3 URI                S3 object URI (e.g. 's3://bucket/data.parquet')
 
 Workflow & Pipeline Flags:
   -a, --all                   Run full pipeline (profile + report + visualize + preprocess + notebook)
@@ -164,15 +174,24 @@ Workflow & Pipeline Flags:
       --visualize             Generate 10+ EDA visualization charts
       --preprocess            Generate an automated preprocessing Python script
   -n, --notebook              Generate a complete starter Jupyter notebook (.ipynb)
+      --export-pipeline       Export baseline model as reusable Python pipeline.py + test_pipeline.py
 
-Data & Target Options:
-  -t, --target TARGET         Specify target column name for supervised EDA & balance analysis
+Target & Intelligence Options:
+  -t, --target TARGET         Specify target column for task detection, imbalance analysis & metrics
+      --audit                 Run active data quality and leakage audit checks
+      --strict                Exit non-zero if critical data quality/leakage issues are found
+      --test-file PATH        Test dataset file for train/test leakage and drift audit
+
+Environment Pinning & Incremental Options:
+      --conda                 Emit Conda environment.yml alongside requirements.txt
+      --check-env REQ_FILE    Compare current environment against pinned requirements file
+      --update                Incremental profiling reusing cached column stats for unchanged data
+
+Data & Output Controls:
   -o, --output-dir DIR        Directory to save downloaded data (default: data)
   -l, --local                 Use local data in output directory (skips downloading)
   -c, --competition           Download from Kaggle Competition instead of Dataset
   -s, --sample N              Sample N rows from dataset (ideal for multi-GB datasets)
-
-Visualization Controls:
   -m, --max-cols N            Maximum number of columns to plot in distributions (default: 10)
   -d, --dpi DPI               Plot figure resolution DPI (default: 150)
   -f, --fig-format FORMAT     Plot file format: png, pdf, svg, jpg (default: png)

@@ -9,23 +9,23 @@ from typing import Dict, List
 import pandas as pd
 
 
+from .intelligence import (
+    detect_task_type,
+    analyze_class_balance,
+    recommend_metrics,
+    determine_split_strategy,
+)
+
+
 def generate_notebook(
     dataset_name: str,
     df: pd.DataFrame = None,
     profile: Dict = None,
+    target: str = None,
     output_dir: str = "notebooks"
 ) -> Path:
     """
     Generate a complete Jupyter notebook with starter analysis code
-    
-    Args:
-        dataset_name: Name of the dataset
-        df: DataFrame (optional, for data insights)
-        profile: Data profile dict (optional)
-        output_dir: Directory to save the notebook
-    
-    Returns:
-        Path to the generated notebook file
     """
     
     output_path = Path(output_dir)
@@ -63,6 +63,16 @@ def generate_notebook(
         cat_cols = []
         all_cols = []
     
+    # Task intelligence
+    task_type = None
+    split_strategy = None
+    recommended_metrics = None
+    if df is not None and target and target in df.columns:
+        task_type = detect_task_type(df, target)
+        class_info = analyze_class_balance(df, target) if "classification" in task_type else None
+        recommended_metrics = recommend_metrics(task_type, class_info)
+        split_strategy = determine_split_strategy(task_type)
+
     # Generate the notebook content
     notebook_content = generate_notebook_content(
         dataset_name=dataset_name,
@@ -77,7 +87,11 @@ def generate_notebook(
         cat_cols=cat_cols,
         all_cols=all_cols,
         suggestions=suggestions,
-        warnings=warnings
+        warnings=warnings,
+        target=target,
+        task_type=task_type,
+        split_strategy=split_strategy,
+        recommended_metrics=recommended_metrics
     )
     
     # Save notebook
@@ -104,12 +118,18 @@ def generate_notebook_content(
     cat_cols: List[str],
     all_cols: List[str],
     suggestions: List[str],
-    warnings: List[str]
+    warnings: List[str],
+    target: str = None,
+    task_type: str = None,
+    split_strategy: Dict = None,
+    recommended_metrics: List[str] = None
 ) -> str:
     """
     Generate the actual notebook JSON content
     """
-    
+    target_str = f"'{target}'" if target else "'target'"
+    split_code = split_strategy["code"] if split_strategy else "train_test_split(X, y, test_size=0.2, random_state=42)"
+
     # Build the notebook as a JSON structure
     notebook = {
         "cells": [
@@ -345,14 +365,14 @@ def generate_notebook_content(
             },
             
             # ============================================================
-            # Cell 10: Preprocessing
+            # Cell 10: Preprocessing & Train/Test Split
             # ============================================================
             {
                 "cell_type": "code",
                 "execution_count": None,
                 "metadata": {},
                 "source": [
-                    "# 9. Preprocessing Pipeline\n",
+                    "# 9. Preprocessing & Train/Test Split\n",
                     "def preprocess_data(df, target_col=None):\n",
                     "    data = df.copy()\n",
                     "    if target_col and target_col in data.columns:\n",
@@ -368,7 +388,7 @@ def generate_notebook_content(
                     "    for col in num_cols:\n",
                     "        X[col].fillna(X[col].median(), inplace=True)\n",
                     "    for col in cat_cols:\n",
-                    "        X[col].fillna(X[col].mode()[0], inplace=True)\n",
+                    "        X[col].fillna(X[col].mode()[0] if not X[col].mode().empty else 'missing', inplace=True)\n",
                     "        le = LabelEncoder()\n",
                     "        X[col] = le.fit_transform(X[col].astype(str))\n",
                     "    \n",
@@ -376,12 +396,13 @@ def generate_notebook_content(
                     "        scaler = StandardScaler()\n",
                     "        X[num_cols] = scaler.fit_transform(X[num_cols])\n",
                     "    \n",
-                    "    print(f\"Preprocessed feature matrix shape: {X.shape}\")\n",
                     "    return X, y\n",
                     "\n",
-                    "# Usage:\n",
-                    "# target_column = 'target'\n",
-                    "# X, y = preprocess_data(df, target_col=target_column)"
+                    f"target_column = {target_str}\n",
+                    "if target_column in df.columns:\n",
+                    "    X, y = preprocess_data(df, target_col=target_column)\n",
+                    f"    X_train, X_test, y_train, y_test = {split_code}\n",
+                    "    print(f'Train shape: {X_train.shape}, Test shape: {X_test.shape}')\n"
                 ]
             },
             
@@ -394,23 +415,34 @@ def generate_notebook_content(
                 "metadata": {},
                 "source": [
                     "# 10. Baseline Model Evaluation\n",
-                    "from sklearn.ensemble import RandomForestClassifier\n",
-                    "from sklearn.linear_model import LogisticRegression\n",
-                    "\n",
-                    "def evaluate_baseline_models(X_train, X_test, y_train, y_test):\n",
-                    "    models = {\n",
-                    "        'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),\n",
-                    "        'Logistic Regression': LogisticRegression(max_iter=1000, random_state=42)\n",
-                    "    }\n",
-                    "    for name, model in models.items():\n",
-                    "        model.fit(X_train, y_train)\n",
-                    "        y_pred = model.predict(X_test)\n",
-                    "        print(f\"{name} Accuracy: {accuracy_score(y_test, y_pred):.4f}\")\n",
-                    "        print(classification_report(y_test, y_pred))\n",
-                    "\n",
-                    "# Usage:\n",
-                    "# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n",
-                    "# evaluate_baseline_models(X_train, X_test, y_train, y_test)"
+                    "if 'X_train' in locals() and y_train is not None:\n",
+                    "    is_clf = " + ("True" if task_type and "classification" in task_type else "False") + "\n",
+                    "    if is_clf:\n",
+                    "        from sklearn.ensemble import RandomForestClassifier\n",
+                    "        from sklearn.linear_model import LogisticRegression\n",
+                    "        models = {\n",
+                    "            'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),\n",
+                    "            'Logistic Regression': LogisticRegression(max_iter=1000, random_state=42)\n",
+                    "        }\n",
+                    "        for name, model in models.items():\n",
+                    "            model.fit(X_train, y_train)\n",
+                    "            y_pred = model.predict(X_test)\n",
+                    "            print(f'{name} Accuracy: {accuracy_score(y_test, y_pred):.4f}')\n",
+                    "            print(classification_report(y_test, y_pred))\n",
+                    "    else:\n",
+                    "        from sklearn.ensemble import RandomForestRegressor\n",
+                    "        from sklearn.linear_model import LinearRegression\n",
+                    "        from sklearn.metrics import mean_squared_error, r2_score\n",
+                    "        models = {\n",
+                    "            'Random Forest Regressor': RandomForestRegressor(n_estimators=100, random_state=42),\n",
+                    "            'Linear Regression': LinearRegression()\n",
+                    "        }\n",
+                    "        for name, model in models.items():\n",
+                    "            model.fit(X_train, y_train)\n",
+                    "            y_pred = model.predict(X_test)\n",
+                    "            rmse = np.sqrt(mean_squared_error(y_test, y_pred))\n",
+                    "            r2 = r2_score(y_test, y_pred)\n",
+                    "            print(f'{name} RMSE: {rmse:.4f}, R2: {r2:.4f}')\n"
                 ]
             }
         ],

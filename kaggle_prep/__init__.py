@@ -11,6 +11,7 @@ from .profiler import DataProfiler, save_profile_json, print_profile_summary
 from .report import generate_standalone_report
 from .visualizer import generate_eda_plots, generate_preprocessing_code
 from .notebook import generate_notebook
+from .ingestion import get_source_adapter
 
 __all__ = [
     "main",
@@ -21,5 +22,6 @@ __all__ = [
     "generate_eda_plots",
     "generate_preprocessing_code",
     "generate_notebook",
+    "get_source_adapter",
     "__version__",
 ]
