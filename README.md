@@ -1,7 +1,7 @@
 #  Kaggle Prep
 
 <p align="center">
-  <img src="https://i.pinimg.com/736x/aa/db/ac/aadbac8f3df73fe8655a4f2d21923c86.jpg" alt="Kaggle Prep Banner" width="700" onerror="this.style.display='none'"/>
+  <img src="https://i.pinimg.com/736x/aa/db/ac/aadbac8f3df73fe8655a4f2d21923c86.jpg" alt="Kaggle Prep Banner" width="100" height='90' onerror="this.style.display='none'"/>
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/kaggle-prep/"><img src="https://img.shields.io/badge/pypi-v0.3.0-blue.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/kaggle-prep/"><img src="https://img.shields.io/badge/pypi-v0.5.0-blue.svg" alt="PyPI version"></a>
   <a href="https://pypi.org/project/kaggle-prep/"><img src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
   <a href="https://github.com/SumitGavali/CLI-DataAnalysis/actions"><img src="https://img.shields.io/badge/tests-12%20passed-brightgreen.svg" alt="Tests"></a>

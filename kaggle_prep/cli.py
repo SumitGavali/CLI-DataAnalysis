@@ -102,7 +102,7 @@ def parse_arguments():
     parser.add_argument(
         "--version", "-v",
         action="version",
-        version="%(prog)s 0.3.0",
+        version="%(prog)s 0.5.0",
         help="Show program version number and exit"
     )
 

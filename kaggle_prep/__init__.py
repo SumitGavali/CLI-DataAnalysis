@@ -2,7 +2,7 @@
 Kaggle Prep - One-command Kaggle dataset preparation & EDA toolkit.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.5.0"
 __author__ = "Sumit Gavali"
 __email__ = "sumitrg0007@gmail.com"
 
