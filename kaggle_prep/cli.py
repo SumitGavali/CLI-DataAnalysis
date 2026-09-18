@@ -64,7 +64,7 @@ def parse_arguments():
     )
 
     parser.add_argument(
-        "--file", "-f",
+        "--file", "-ff",
         default=None,
         help="Path to local CSV, Parquet, JSON, Excel, or TSV file"
     )
@@ -879,4 +879,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()
