@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kaggle-prep"
-version = "0.5.0"
+version = "0.5.1"
 description = "One-command Kaggle dataset preparation, profiling, visualization & starter notebook generation tool"
 readme = "README.md"
 license = {text = "MIT"}
